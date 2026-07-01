@@ -921,7 +921,17 @@ func main() {
 		}
 	}
 
-	// API key can also come from env var
+	// Flags can also come from env vars
+	if mode == "stdio" {
+		if v := os.Getenv("MCP_MODE"); v != "" {
+			mode = v
+		}
+	}
+	if addr == ":8080" {
+		if v := os.Getenv("MCP_ADDR"); v != "" {
+			addr = v
+		}
+	}
 	if apiKey == "" {
 		apiKey = os.Getenv("MCP_API_KEY")
 	}
@@ -944,8 +954,8 @@ Usage:
   wordpress-mcp [flags]
 
 Flags:
-  --mode, -m <mode>       Transport mode: "stdio" (default) or "sse"
-  --addr, -a <addr>       SSE listen address (default ":8080")
+  --mode, -m <mode>       Transport mode: "stdio" (default) or "sse" (or set MCP_MODE env var)
+  --addr, -a <addr>       SSE listen address (default ":8080") (or set MCP_ADDR env var)
   --api-key, -k <key>     Bearer API key for SSE mode (or set MCP_API_KEY env var)
   --help, -h              Show this help
 
@@ -953,6 +963,8 @@ Environment variables:
   WP_BASE_URL             WordPress site URL (e.g. https://your-site.com)
   WP_USERNAME             WordPress username
   WP_APP_PASSWORD         WordPress Application Password
+  MCP_MODE                Transport mode: "stdio" (default) or "sse" (if --mode not set)
+  MCP_ADDR                SSE listen address, default ":8080" (if --addr not set)
   MCP_API_KEY             Bearer API key for SSE mode (if --api-key not set)
 
 Modes:

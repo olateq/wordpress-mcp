@@ -42,6 +42,8 @@ wordpress-mcp/
 | `WP_BASE_URL` | WordPress site URL (e.g. `https://your-site.com`) | ✅ |
 | `WP_USERNAME` | WordPress username | ✅ |
 | `WP_APP_PASSWORD` | WordPress Application Password | ✅ |
+| `MCP_MODE` | Transport mode: `stdio` (default) or `sse` (if `--mode` not set) | ❌ |
+| `MCP_ADDR` | SSE listen address, default `:8080` (if `--addr` not set) | SSE only |
 | `MCP_API_KEY` | Bearer API key for SSE mode (if `--api-key` not set) | SSE only |
 
 ## Usage
@@ -86,8 +88,8 @@ export WP_APP_PASSWORD="xxxx xxxx xxxx xxxx"
 # SSE with Bearer authentication
 ./wordpress-mcp --mode sse --addr :8080 --api-key your-secret-key
 
-# SSE via environment variable
-MCP_API_KEY=your-secret-key ./wordpress-mcp -m sse -a :8080
+# SSE via environment variables
+MCP_MODE=sse MCP_ADDR=:8080 MCP_API_KEY=your-secret-key ./wordpress-mcp
 ```
 
 **SSE endpoints:**
@@ -157,6 +159,8 @@ sudo tee /etc/wordpress-mcp/env << 'EOF'
 WP_BASE_URL=https://your-site.com
 WP_USERNAME=admin
 WP_APP_PASSWORD=xxxx xxxx xxxx xxxx
+MCP_MODE=sse
+MCP_ADDR=:8080
 MCP_API_KEY=your-secret-key
 EOF
 sudo chmod 600 /etc/wordpress-mcp/env
@@ -181,10 +185,15 @@ The unit file includes security hardening (`NoNewPrivileges`, `ProtectSystem=str
 wordpress-mcp — WordPress REST API MCP Server
 
 Flags:
-  --mode, -m <mode>       Transport mode: "stdio" (default) or "sse"
-  --addr, -a <addr>       SSE listen address (default ":8080")
+  --mode, -m <mode>       Transport mode: "stdio" (default) or "sse" (or set MCP_MODE env var)
+  --addr, -a <addr>       SSE listen address (default ":8080") (or set MCP_ADDR env var)
   --api-key, -k <key>     Bearer API key for SSE mode (or set MCP_API_KEY env var)
   --help, -h              Show this help
+
+Environment variables:
+  MCP_MODE                Transport mode: "stdio" (default) or "sse" (if --mode not set)
+  MCP_ADDR                SSE listen address, default ":8080" (if --addr not set)
+  MCP_API_KEY             Bearer API key for SSE mode (if --api-key not set)
 ```
 
 ## Available tools (37)

@@ -8,12 +8,16 @@ Wants=network-online.target
 Type=simple
 
 # Binary path (adjust to your install location)
-ExecStart=/usr/local/bin/wordpress-mcp --mode sse --addr :8080 --api-key ${MCP_API_KEY}
+ExecStart=/usr/local/bin/wordpress-mcp --api-key ${MCP_API_KEY}
 
-# Environment variables
+# Environment variables — WordPress connection
 Environment=WP_BASE_URL=https://your-site.com
 Environment=WP_USERNAME=admin
 Environment=WP_APP_PASSWORD=xxxx xxxx xxxx xxxx
+
+# Environment variables — Server configuration
+Environment=MCP_MODE=sse
+Environment=MCP_ADDR=:8080
 Environment=MCP_API_KEY=your-secret-key
 
 # Alternatively, use an env file:
