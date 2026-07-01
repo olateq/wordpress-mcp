@@ -939,10 +939,12 @@ func main() {
 	switch mode {
 	case "stdio":
 		runStdio()
-	case "sse", "http":
+	case "sse":
 		runSSE(addr, apiKey)
+	case "http":
+		runHTTP(addr, apiKey)
 	default:
-		log.Fatalf("Unknown mode: %s (use 'stdio' or 'sse')", mode)
+		log.Fatalf("Unknown mode: %s (use 'stdio', 'sse', or 'http')", mode)
 	}
 }
 
@@ -954,7 +956,7 @@ Usage:
   wordpress-mcp [flags]
 
 Flags:
-  --mode, -m <mode>       Transport mode: "stdio" (default) or "sse" (or set MCP_MODE env var)
+  --mode, -m <mode>       Transport mode: "stdio" (default), "sse", or "http" (or set MCP_MODE env var)
   --addr, -a <addr>       SSE listen address (default ":8080") (or set MCP_ADDR env var)
   --api-key, -k <key>     Bearer API key for SSE mode (or set MCP_API_KEY env var)
   --help, -h              Show this help
@@ -963,22 +965,30 @@ Environment variables:
   WP_BASE_URL             WordPress site URL (e.g. https://your-site.com)
   WP_USERNAME             WordPress username
   WP_APP_PASSWORD         WordPress Application Password
-  MCP_MODE                Transport mode: "stdio" (default) or "sse" (if --mode not set)
+  MCP_MODE                Transport mode: "stdio" (default), "sse", or "http" (if --mode not set)
   MCP_ADDR                SSE listen address, default ":8080" (if --addr not set)
   MCP_API_KEY             Bearer API key for SSE mode (if --api-key not set)
 
 Modes:
   stdio   JSON-RPC over stdin/stdout (default, for local MCP clients)
   sse     HTTP Server-Sent Events (for remote/network MCP clients)
+  http    Streamable HTTP (MCP spec compliant, for remote/network clients)
 
 SSE endpoints:
   GET  /sse        Opens SSE connection, returns endpoint URL in first event
   POST /messages   Sends JSON-RPC requests (with ?session_id=...)
 
+HTTP endpoints:
+  POST   /mcp      Sends JSON-RPC requests (returns response in body)
+  GET    /mcp      Opens SSE stream for server-to-client notifications
+  DELETE /mcp      Terminates session
+
 Examples:
   wordpress-mcp                                    # stdio mode
   wordpress-mcp --mode sse --addr :8080            # SSE on port 8080, no auth
   wordpress-mcp --mode sse --api-key secret123     # SSE with Bearer auth
+  wordpress-mcp --mode http --addr :8080           # HTTP on port 8080, no auth
+  wordpress-mcp --mode http --api-key secret123    # HTTP with Bearer auth
   MCP_API_KEY=secret wordpress-mcp -m sse -a :9090 # SSE via env vars
 
 `)
@@ -1025,5 +1035,12 @@ func runSSE(addr, apiKey string) {
 	server := NewSSEServer(apiKey)
 	if err := server.Start(addr); err != nil {
 		log.Fatalf("SSE server error: %v", err)
+	}
+}
+// runHTTP runs the MCP server in Streamable HTTP mode with optional Bearer auth.
+func runHTTP(addr, apiKey string) {
+	server := NewHTTPServer(apiKey)
+	if err := server.Start(addr); err != nil {
+		log.Fatalf("HTTP server error: %v", err)
 	}
 }
