@@ -2,23 +2,24 @@
 
 MCP (Model Context Protocol) server for WordPress REST API.
 
-Exposes **37 tools** covering Posts, Pages, Media, Users, Comments, Categories, Tags, and Settings — accessible via **stdio** (local) or **HTTP/SSE** (remote) transport.
+Exposes **37 tools** covering Posts, Pages, Media, Users, Comments, Categories, Tags, and Settings — accessible via **stdio** (local), **SSE**, or **Streamable HTTP** (remote) transport.
 
 ## Features
 
 - **37 MCP tools** — full CRUD for all major WordPress resources
-- **Two transport modes** — stdio (default) and SSE/HTTP
-- **Bearer authentication** — optional API key for SSE mode
+- **Three transport modes** — stdio (default), SSE, and Streamable HTTP
+- **Bearer authentication** — optional API key for SSE and HTTP modes
 - **Zero external dependencies** — Go standard library + `google/uuid` only
 - **CORS support** — ready for browser-based MCP clients
-- **Session management** — concurrent SSE sessions with heartbeat
+- **Session management** — concurrent sessions with heartbeat (SSE and HTTP)
 
 ## Project structure
 
 ```
 wordpress-mcp/
 ├── main.go              # MCP server (JSON-RPC) + tool dispatch + CLI
-├── server_sse.go        # SSE/HTTP server with Bearer auth + session management
+├── server_sse.go        # SSE server with Bearer auth + session management
+├── server_http.go       # Streamable HTTP server (MCP spec) with session management
 ├── go.mod               # Module definition
 ├── Taskfile.yml         # Build, cross-compile, test, vet, fmt, clean
 ├── wordpress-mcp.service # systemd unit file for production deployment
@@ -42,9 +43,9 @@ wordpress-mcp/
 | `WP_BASE_URL` | WordPress site URL (e.g. `https://your-site.com`) | ✅ |
 | `WP_USERNAME` | WordPress username | ✅ |
 | `WP_APP_PASSWORD` | WordPress Application Password | ✅ |
-| `MCP_MODE` | Transport mode: `stdio` (default) or `sse` (if `--mode` not set) | ❌ |
-| `MCP_ADDR` | SSE listen address, default `:8080` (if `--addr` not set) | SSE only |
-| `MCP_API_KEY` | Bearer API key for SSE mode (if `--api-key` not set) | SSE only |
+| `MCP_MODE` | Transport mode: `stdio` (default), `sse`, or `http` (if `--mode` not set) | ❌ |
+| `MCP_ADDR` | Listen address, default `:8080` (if `--addr` not set) | SSE/HTTP |
+| `MCP_API_KEY` | Bearer API key for SSE/HTTP mode (if `--api-key` not set) | SSE/HTTP |
 
 ## Usage
 
@@ -79,7 +80,7 @@ export WP_APP_PASSWORD="xxxx xxxx xxxx xxxx"
 }
 ```
 
-### SSE/HTTP mode (for remote/network MCP clients)
+### SSE mode (for remote/network MCP clients — legacy)
 
 ```bash
 # SSE without auth (not recommended for production)
@@ -124,6 +125,54 @@ All requests must include an `Authorization: Bearer <your-api-key>` header (when
 3. Server responds with `202 Accepted` and pushes the JSON-RPC response through the SSE channel
 4. Heartbeat every 30s keeps the connection alive
 
+
+### HTTP mode (for remote/network MCP clients — MCP spec compliant)
+
+```bash
+# HTTP without auth (not recommended for production)
+./wordpress-mcp --mode http --addr :8080
+
+# HTTP with Bearer authentication
+./wordpress-mcp --mode http --addr :8080 --api-key your-secret-key
+
+# HTTP via environment variables
+MCP_MODE=http MCP_ADDR=:8080 MCP_API_KEY=your-secret-key ./wordpress-mcp
+```
+
+**HTTP endpoints:**
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/mcp` | Sends JSON-RPC requests (returns response in body or SSE stream) |
+| `GET` | `/mcp` | Opens SSE stream for server-to-client notifications |
+| `DELETE` | `/mcp` | Terminates session |
+
+**Authentication:**
+
+All requests must include an `Authorization: Bearer <your-api-key>` header (when `--api-key` or `MCP_API_KEY` is set).
+
+**Session lifecycle:**
+
+1. Client sends `POST /mcp` with an `initialize` request → server creates a session and returns the session ID in the `Mcp-Session-Id` response header
+2. Client includes the `Mcp-Session-Id` header in all subsequent requests
+3. Server returns JSON responses directly in the response body (or as SSE `data:` events if the client sends `Accept: text/event-stream`)
+4. Notifications (requests without an `id` field) receive `202 Accepted` with no body
+5. Client can open `GET /mcp` for server-to-client notifications (SSE stream with heartbeat)
+6. Client sends `DELETE /mcp` to terminate the session
+
+**MCP client config (HTTP):**
+```json
+{
+  "mcpServers": {
+    "wordpress": {
+      "url": "http://your-server:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer your-secret-key"
+      }
+    }
+  }
+}
+```
 
 ### systemd service (production deployment)
 
@@ -185,15 +234,15 @@ The unit file includes security hardening (`NoNewPrivileges`, `ProtectSystem=str
 wordpress-mcp — WordPress REST API MCP Server
 
 Flags:
-  --mode, -m <mode>       Transport mode: "stdio" (default) or "sse" (or set MCP_MODE env var)
+  --mode, -m <mode>       Transport mode: "stdio" (default), "sse", or "http" (or set MCP_MODE env var)
   --addr, -a <addr>       SSE listen address (default ":8080") (or set MCP_ADDR env var)
-  --api-key, -k <key>     Bearer API key for SSE mode (or set MCP_API_KEY env var)
+  --api-key, -k <key>     Bearer API key for SSE/HTTP mode (or set MCP_API_KEY env var)
   --help, -h              Show this help
 
 Environment variables:
-  MCP_MODE                Transport mode: "stdio" (default) or "sse" (if --mode not set)
+  MCP_MODE                Transport mode: "stdio" (default), "sse", or "http" (if --mode not set)
   MCP_ADDR                SSE listen address, default ":8080" (if --addr not set)
-  MCP_API_KEY             Bearer API key for SSE mode (if --api-key not set)
+  MCP_API_KEY             Bearer API key for SSE/HTTP mode (if --api-key not set)
 ```
 
 ## Available tools (37)
@@ -235,7 +284,7 @@ task clean
 
 - **Size**: ~7 MB (stripped with `-ldflags="-s -w"`)
 - **Protocol**: MCP `2024-11-05` (initialize, tools/list, tools/call, ping)
-- **Auth**: WordPress Application Passwords (Basic Auth) + Bearer API key (SSE mode)
+- **Auth**: WordPress Application Passwords (Basic Auth) + Bearer API key (SSE/HTTP mode)
 
 ## License
 
