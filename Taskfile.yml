@@ -2,26 +2,26 @@ version: '3'
 
 vars:
   BINARY: wordpress-mcp
-  MAIN: ./main.go
+  MAIN: .
 
 tasks:
   default:
     desc: Build the wordpress-mcp binary
     cmds:
-      - go build -ldflags="-s -w" -o {{.BINARY}} {{.MAIN}}
+      - go build -buildvcs=false -ldflags="-s -w" -o {{.BINARY}} {{.MAIN}}
 
   build:
     desc: Build the wordpress-mcp binary
     cmds:
-      - go build -ldflags="-s -w" -o {{.BINARY}} {{.MAIN}}
+      - go build -buildvcs=false -ldflags="-s -w" -o {{.BINARY}} {{.MAIN}}
 
   build-all:
     desc: Build for multiple platforms (linux/amd64, linux/arm64, darwin/amd64, darwin/arm64)
     cmds:
-      - GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o {{.BINARY}}-linux-amd64 {{.MAIN}}
-      - GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o {{.BINARY}}-linux-arm64 {{.MAIN}}
-      - GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o {{.BINARY}}-darwin-amd64 {{.MAIN}}
-      - GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o {{.BINARY}}-darwin-arm64 {{.MAIN}}
+      - GOOS=linux GOARCH=amd64 go build -buildvcs=false -ldflags="-s -w" -o {{.BINARY}}-linux-amd64 {{.MAIN}}
+      - GOOS=linux GOARCH=arm64 go build -buildvcs=false -ldflags="-s -w" -o {{.BINARY}}-linux-arm64 {{.MAIN}}
+      - GOOS=darwin GOARCH=amd64 go build -buildvcs=false -ldflags="-s -w" -o {{.BINARY}}-darwin-amd64 {{.MAIN}}
+      - GOOS=darwin GOARCH=arm64 go build -buildvcs=false -ldflags="-s -w" -o {{.BINARY}}-darwin-arm64 {{.MAIN}}
 
   run:
     desc: Run the MCP server in stdio mode (reads JSON-RPC from stdin)
