@@ -1,0 +1,40 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+wordpress-mcp
+wordpress-mcp.exe
+
+# Build output
+/dist/
+/bin/
+
+# Go test / coverage
+*.test
+*.out
+coverage.txt
+*.prof
+
+# Go workspace
+go.work
+go.work.sum
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Task
+.task/
