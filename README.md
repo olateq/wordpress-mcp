@@ -21,6 +21,7 @@ wordpress-mcp/
 ├── server_sse.go        # SSE/HTTP server with Bearer auth + session management
 ├── go.mod               # Module definition
 ├── Taskfile.yml         # Build, cross-compile, test, vet, fmt, clean
+├── wordpress-mcp.service # systemd unit file for production deployment
 ├── README.md            # This file
 └── wordpress/
     ├── client.go        # HTTP client + types + CRUD posts
@@ -120,6 +121,59 @@ All requests must include an `Authorization: Bearer <your-api-key>` header (when
 2. Client sends JSON-RPC requests via `POST /messages?session_id=...`
 3. Server responds with `202 Accepted` and pushes the JSON-RPC response through the SSE channel
 4. Heartbeat every 30s keeps the connection alive
+
+
+### systemd service (production deployment)
+
+A ready-to-use systemd unit file is provided (`wordpress-mcp.service`) for running the server as a background service.
+
+**Setup:**
+
+```bash
+# 1. Build and install the binary
+ task build
+sudo cp wordpress-mcp /usr/local/bin/
+
+# 2. Create a dedicated user
+sudo useradd -r -s /usr/sbin/nologin -M wordpress-mcp
+
+# 3. Copy the service file
+sudo cp wordpress-mcp.service /etc/systemd/system/
+
+# 4. Edit the environment variables in the unit file
+#    (or use an EnvironmentFile at /etc/wordpress-mcp/env)
+sudo systemctl edit --full wordpress-mcp
+
+# 5. Reload and start
+sudo systemctl daemon-reload
+sudo systemctl enable --now wordpress-mcp
+```
+
+**Alternatively, use an env file** (recommended for secrets):
+
+```bash
+sudo mkdir /etc/wordpress-mcp
+sudo tee /etc/wordpress-mcp/env << 'EOF'
+WP_BASE_URL=https://your-site.com
+WP_USERNAME=admin
+WP_APP_PASSWORD=xxxx xxxx xxxx xxxx
+MCP_API_KEY=your-secret-key
+EOF
+sudo chmod 600 /etc/wordpress-mcp/env
+sudo chown wordpress-mcp:wordpress-mcp /etc/wordpress-mcp/env
+```
+
+Then uncomment the `EnvironmentFile=` line in the unit file and remove the individual `Environment=` lines.
+
+**Service management:**
+
+```bash
+sudo systemctl status wordpress-mcp   # check status
+sudo systemctl restart wordpress-mcp  # restart
+journalctl -u wordpress-mcp -f        # view logs
+```
+
+The unit file includes security hardening (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`) and automatic restart on failure.
 
 ## CLI flags
 

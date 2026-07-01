@@ -1,0 +1,45 @@
+[Unit]
+Description=WordPress MCP Server (SSE/HTTP mode)
+Documentation=https://github.com/olateq/wordpress-mcp
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Binary path (adjust to your install location)
+ExecStart=/usr/local/bin/wordpress-mcp --mode sse --addr :8080 --api-key ${MCP_API_KEY}
+
+# Environment variables
+Environment=WP_BASE_URL=https://your-site.com
+Environment=WP_USERNAME=admin
+Environment=WP_APP_PASSWORD=xxxx xxxx xxxx xxxx
+Environment=MCP_API_KEY=your-secret-key
+
+# Alternatively, use an env file:
+# EnvironmentFile=/etc/wordpress-mcp/env
+
+# Run as a dedicated user for security
+User=wordpress-mcp
+Group=wordpress-mcp
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wordpress-mcp
+
+[Install]
+WantedBy=multi-user.target
